@@ -1,14 +1,8 @@
 ﻿module algorithms
-// Learn more about F# at http://docs.microsoft.com/dotnet/fsharp
+
 open System
 open System.Numerics
 open System.Threading.Tasks
-
-// Define a function to construct a message to print
-//let factor (n:float) (N:float)  = Math.Pow(Math.E, (Math.PI * Complex(-2.0, 1.0) * n) / N)
-
-
-
 
 let complexE = Complex(Math.E, 0.0)
 
@@ -49,7 +43,6 @@ let fft (signal: List<double>) : List<Complex> =
         (signal |> List.map (fun n -> Complex(n, 0.0)))
 
     let z = fft_helper lazy_signal 0 []
-    //    printfn "RESULT IN %A" z
     z
 
 

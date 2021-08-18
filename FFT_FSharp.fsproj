@@ -6,7 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="algo.fs" />
+        <Compile Include="algorithms.fs" />
     </ItemGroup>
 
 </Project>
