@@ -16,18 +16,25 @@ let splitList list =
     |> List.partition fst
     |> fun (odd, even) -> List.map snd odd, List.map snd even
 
-let fourierMultiply (head: Complex) (k: int) (n: int) (length: int) : Complex =
-    (head
-     * (Complex.Pow(
-         complexE,
-         (-2.0
-          * Math.PI
-          * Complex.ImaginaryOne
-          * float k
-          * float n)
-         / Complex(float (length), 0.0)
-     )))
+let expo (k: int) (n: int) (length: int) : Complex =
+    Complex.Pow(
+        complexE,
+        (-2.0
+         * Math.PI
+         * Complex.ImaginaryOne
+         * float k
+         * float n)
+        / Complex(float (length), 0.0)
+    )
 
+let expoE (k: int) (length: int) : Complex =
+    Complex.Pow(
+        complexE,
+        (-2.0 * Math.PI * Complex.ImaginaryOne * float k)
+        / Complex(float (length), 0.0)
+    )
+
+let fourierMultiply (head: Complex) (k: int) (n: int) (length: int) : Complex = (head * (expo k n length))
 
 let fft (signal: List<double>) : List<Complex> =
     let rec fft_helper (complexSignal: List<Complex>) (index: int) (acc: List<Complex>) =
@@ -49,31 +56,47 @@ let fft (signal: List<double>) : List<Complex> =
     let result = fft_helper complexSignal 0 []
     List.rev result
 
+let memoize fn =
+    let cache =
+        new System.Collections.Generic.Dictionary<_, _>()
+
+    (fun x ->
+        match cache.TryGetValue x with
+        | true, v -> v
+        | false, _ ->
+            let v = fn (x)
+            cache.Add(x, v)
+            v)
+
+let fourier (index: int) (signalLength: int) (complexSignal: List<Complex>) : Complex =
+    (List.fold
+        (fun fs1 fs2 -> fs1 + fs2)
+        Complex.Zero
+        (List.mapi (fun i fx -> fourierMultiply fx index i signalLength) complexSignal))
+
+let memFourier = memoize fourier
+
 let fftRadix2 (signal: List<double>) : List<Complex> =
     let rec fft_helper
-        (complexSignal: List<Complex>)
+        (signalLength: int)
         (complexEven: List<Complex>)
         (complexOdd: List<Complex>)
         (index: int)
-        (acc: List<Complex>)
+        (e: Complex)
+        (accl: List<Complex>)
+        (accr: List<Complex>)
         =
-        match complexSignal with
-        | head :: tail when index < complexSignal.Length ->
+        match complexEven with
+        | head :: tail when index < (signalLength / 2) ->
             fft_helper
-                complexSignal
+                signalLength
                 complexEven
                 complexOdd
                 (index + 1)
-                ((List.fold
-                    (fun fs1 fs2 -> fs1 + fs2)
-                    Complex.Zero
-                    (List.mapi (fun i fx -> fourierMultiply fx index (i * 2) (complexSignal.Length)) complexEven))
-                 + (List.fold
-                     (fun fs1 fs2 -> fs1 + fs2)
-                     Complex.Zero
-                     (List.mapi (fun i fx -> fourierMultiply fx index (i * 2 + 1) (complexSignal.Length)) complexOdd))
-                 :: acc)
-        | _ -> acc
+                (expoE (index + 1) signalLength)
+                ((memFourier index (signalLength / 2) complexEven) + e * (memFourier index (signalLength / 2) complexOdd) :: accl)
+                ((memFourier index (signalLength / 2) complexEven) - e * (memFourier index (signalLength / 2) complexOdd) :: accr)
+        | _ -> (List.rev accl) @ (List.rev accr)
 
     let complexSignal =
         (signal |> List.map (fun n -> Complex(n, 0.0)))
@@ -82,9 +105,9 @@ let fftRadix2 (signal: List<double>) : List<Complex> =
 
 
     let result =
-        fft_helper complexSignal (fst split) (snd split) 0 []
+        fft_helper complexSignal.Length (fst split) (snd split) 0 (expoE 0 complexSignal.Length) [] []
 
-    List.rev result
+    result
 
 
 
@@ -101,8 +124,8 @@ let main argv =
           0.0
           0.0 ]
 
-    let r : List<Complex> = fftRadix2 z
+    //    let r : List<Complex> = fftRadix2 z
 
-    printfn "RESULT ARRAY\n %A" r
+    //    printfn "RESULT ARRAY\n %A" r
 
     0
