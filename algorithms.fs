@@ -36,6 +36,7 @@ let expoE (k: int) (length: int) : Complex =
 
 let fourierMultiply (head: Complex) (k: int) (n: int) (length: int) : Complex = (head * (expo k n length))
 
+//Standard fourier transform
 let fft (signal: List<double>) : List<Complex> =
     let rec fft_helper (complexSignal: List<Complex>) (index: int) (acc: List<Complex>) =
         match complexSignal with
@@ -76,6 +77,7 @@ let fourier (index: int) (signalLength: int) (complexSignal: List<Complex>) : Co
 
 let memFourier = memoize fourier
 
+// FFT Radix2 implementation
 let fftRadix2 (signal: List<double>) : List<Complex> =
     let rec fft_helper
         (signalLength: int)
@@ -94,8 +96,14 @@ let fftRadix2 (signal: List<double>) : List<Complex> =
                 complexOdd
                 (index + 1)
                 (expoE (index + 1) signalLength)
-                ((memFourier index (signalLength / 2) complexEven) + e * (memFourier index (signalLength / 2) complexOdd) :: accl)
-                ((memFourier index (signalLength / 2) complexEven) - e * (memFourier index (signalLength / 2) complexOdd) :: accr)
+                ((memFourier index (signalLength / 2) complexEven)
+                 + e
+                   * (memFourier index (signalLength / 2) complexOdd)
+                 :: accl)
+                ((memFourier index (signalLength / 2) complexEven)
+                 - e
+                   * (memFourier index (signalLength / 2) complexOdd)
+                 :: accr)
         | _ -> (List.rev accl) @ (List.rev accr)
 
     let complexSignal =
@@ -108,6 +116,37 @@ let fftRadix2 (signal: List<double>) : List<Complex> =
         fft_helper complexSignal.Length (fst split) (snd split) 0 (expoE 0 complexSignal.Length) [] []
 
     result
+
+let hartley (x: double) (n: int) (k: int) (length: int) : double =
+    x
+    * (Math.Cos(
+        (2.0 * Math.PI) / (float length)
+        * (float n)
+        * (float k)
+       )
+       + Math.Sin(
+           (2.0 * Math.PI) / (float length)
+           * (float n)
+           * (float k)
+       ));;
+
+let fht (signal: List<double>) : List<double> =
+    let rec fht_helper (signalLength: int) (realSignal: List<double>) (index: int) (acc: List<double>) =
+        match realSignal with
+        | head :: tail when index < realSignal.Length ->
+            fht_helper
+                signalLength
+                realSignal
+                (index + 1)
+                ((List.fold
+                    (fun fs1 fs2 -> fs1 + fs2)
+                    0.0
+                    (List.mapi (fun i fx -> hartley fx i index signalLength) realSignal))
+                 :: acc)
+        | _ -> acc
+
+    let result = fht_helper signal.Length signal 0 []
+    List.rev result
 
 
 
@@ -124,8 +163,8 @@ let main argv =
           0.0
           0.0 ]
 
-    //    let r : List<Complex> = fftRadix2 z
+    let r : List<_> = fht z
 
-    //    printfn "RESULT ARRAY\n %A" r
+    printfn "RESULT ARRAY\n %A" r
 
     0
