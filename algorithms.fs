@@ -2,7 +2,7 @@
 
 open System
 open System.Numerics
-open System.Threading.Tasks
+open FSharp.Collections.ParallelSeq
 
 let complexE = Complex(Math.E, 0.0)
 
@@ -117,6 +117,55 @@ let fftRadix2 (signal: List<double>) : List<Complex> =
 
     result
 
+let parallelFourier (index: int) (signalLength: int) (complexSignal: Complex[]) : Complex =
+    (PSeq.fold
+        (fun fs1 fs2 -> fs1 + fs2)
+        Complex.Zero
+        (Array.Parallel.mapi (fun i fx -> fourierMultiply fx index i signalLength) complexSignal))
+
+let memParallelFourier = memoize parallelFourier
+
+// Parallel FFT Radix2 Implementation
+let parallelFFTRadix2 (signal: List<double>) : List<Complex> =
+    let rec fft_helper
+        (signalLength: int)
+        (complexEven: Complex[])
+        (complexOdd: Complex[])
+        (index: int)
+        (e: Complex)
+        (accl: List<Complex>)
+        (accr: List<Complex>)
+        =
+        match complexEven with
+        | complexEven when index < (signalLength / 2) ->
+            fft_helper
+                signalLength
+                complexEven
+                complexOdd
+                (index + 1)
+                (expoE (index + 1) signalLength)
+                ((memParallelFourier index (signalLength / 2) complexEven)
+                 + e
+                   * (memParallelFourier index (signalLength / 2) complexOdd)
+                 :: accl)
+                ((memParallelFourier index (signalLength / 2) complexEven)
+                 - e
+                   * (memParallelFourier index (signalLength / 2) complexOdd)
+                 :: accr)
+        | _ -> (List.rev accl) @ (List.rev accr)
+
+    let complexSignal =
+        (signal |> List.toArray |> Array.Parallel.map (fun n -> Complex(n, 0.0)) |> Array.toList)
+
+    let split = splitList complexSignal
+
+
+    let result =
+        fft_helper complexSignal.Length (List.toArray (fst split)) (List.toArray (snd split)) 0 (expoE 0 complexSignal.Length) [] []
+
+    result
+
+// FHT Implementation
 let hartley (x: double) (n: int) (k: int) (length: int) : double =
     x
     * (Math.Cos(

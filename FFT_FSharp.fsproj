@@ -10,4 +10,8 @@
         <Content Include="FFT_FSharp.sln" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="FSharp.Collections.ParallelSeq" Version="1.1.4" />
+    </ItemGroup>
+
 </Project>
