@@ -1,0 +1,3 @@
+[EXECUTABLE]
+FFT-Scala-assembly-0.1.0-SNAPSHOT
+
